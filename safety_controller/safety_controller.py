@@ -17,56 +17,57 @@ class SafetyController(Node):
         # Declare parameters
         self.declare_parameter("scan_topic", "default")
         self.declare_parameter("drive_topic", "default")
-        self.declare_parameter("side", 1)  # 1 for left, -1 for right (inverted logic)
-        self.declare_parameter("velocity", 1.3)
-        self.declare_parameter("desired_distance", 1.0)
+        self.declare_parameter("safety_topic", "default")
+        self.declare_parameter("stopping_time", 0.0)
+
 
         # Fetch constants from the ROS parameter server
         self.SCAN_TOPIC = self.get_parameter('scan_topic').get_parameter_value().string_value
         self.DRIVE_TOPIC = self.get_parameter('drive_topic').get_parameter_value().string_value
-        self.VELOCITY = self.get_parameter('velocity').get_parameter_value().double_value
-        self.DESIRED_DISTANCE = self.get_parameter('desired_distance').get_parameter_value().double_value
-		
-        self.add_on_set_parameters_callback(self.parameters_callback)
-  
-        drive_topic = self.get_parameter("drive_topic").value
-        lidar_topic = self.get_parameter("scan_topic").value
+        self.SAFETY_TOPIC = self.get_parameter('safety_topic').get_parameter_value().string_value
+        self.STOPPING_TIME = self.get_parameter('stopping_time').get_parameter_value().double_value
 
-        self.drive_publisher_ = self.create_publisher(AckermannDriveStamped, drive_topic, 10)
+        self.drive_publisher_ = self.create_publisher(AckermannDriveStamped, self.SAFETY_TOPIC, 10)
+
+        self.ackermann_sub = self.create_subscription(
+            AckermannDriveStamped,
+            self.DRIVE_TOPIC,
+            self.acker_callback,
+            10)
+        
         self.lidar_subscription = self.create_subscription(
             LaserScan,
-            lidar_topic,
+            self.SCAN_TOPIC,
             self.listener_callback,
             10)
+        
+        self.velocity = 1
 
-        # Visualization publishers and tools
-        self.vis_publishers = [
-            self.create_publisher(Marker, f'/wall_follower/viz_{i}', 10)
-            for i in range(3)
-        ]
-        self.viz_tools = VisualizationTools()
-
+    def acker_callback(self, msg):
+        self.velocity = msg.drive.speed
 
     def listener_callback(self, laser_scan):
-        # Create an array of angles corresponding to the LIDAR scan measurements
-        angles = np.arange(
-            laser_scan.angle_min,
-            laser_scan.angle_max + laser_scan.angle_increment,
-            laser_scan.angle_increment
-        )
-
-        current_time = self.get_clock().now()
-        drive = AckermannDrive()
-        drive.steering_angle = 0
-
-        drive.speed = self.VELOCITY
         
-        drive_stamped = AckermannDriveStamped()
-        drive_stamped.header.frame_id = "drive_frame_id"
-        drive_stamped.header.stamp = current_time.to_msg()
-        drive_stamped.drive = drive
+        scan_data = laser_scan.ranges
+
+        forward_dist = np.mean(scan_data[45:55])
+        time_to_collision = forward_dist / self.velocity
+        stop = time_to_collision < self.STOPPING_TIME
         
-        self.drive_publisher_.publish(drive_stamped)
+        
+        if stop:
+            # Do something to stop
+            current_time = self.get_clock().now()
+            drive_stamped = AckermannDriveStamped()
+            drive_stamped.header.frame_id = "drive_frame_id"
+            drive_stamped.header.stamp = current_time.to_msg()
+            drive_stamped.drive.speed = 0.0
+            drive_stamped.drive.steering_angle = 0.0
+
+            self.get_logger().info(f'STOPPING!!! {time_to_collision=}')
+
+            # TODO: uncomment this to send actual stop commands
+            # self.drive_publisher_.publish(drive_stamped)
 
 def main():
     rclpy.init()
