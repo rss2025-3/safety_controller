@@ -41,6 +41,7 @@ class SafetyController(Node):
             self.listener_callback,
             10)
         
+        # velocity that gets updated by listening to the drive command
         self.velocity = 1
 
     def acker_callback(self, msg):
@@ -50,12 +51,14 @@ class SafetyController(Node):
         
         scan_data = laser_scan.ranges
 
-        forward_dist = np.mean(scan_data[45:55])
+        # calculates the forward obstacle distance by averaging 10 LIDAR values in front
+        # index 50 is the front middle and so 45:55 is the region around it
+        forward_dist = np.mean(scan_data[45:55]) # TODO: check the dimensions of actual LIDAR scan
         time_to_collision = forward_dist / self.velocity
         stop = time_to_collision < self.STOPPING_TIME
         
         
-        if stop:
+        if stop: # TODO: if this doesn't work maybe we also check distance
             # Do something to stop
             current_time = self.get_clock().now()
             drive_stamped = AckermannDriveStamped()
