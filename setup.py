@@ -20,7 +20,7 @@ setup(
     zip_safe=True,
     maintainer='Sebastian',
     maintainer_email='sebastianag2002@gmail.com',
-    description='Wall Follower ROS2 Package',
+    description='Safety controller ROS2 Package',
     license='Apache License, Version 2.0',
     tests_require=['pytest'],
     entry_points={
