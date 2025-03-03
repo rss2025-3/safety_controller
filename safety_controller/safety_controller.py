@@ -55,7 +55,7 @@ class SafetyController(Node):
         # index 50 is the front middle and so 45:55 is the region around it
         forward_dist = np.mean(scan_data[45:55]) # TODO: check the dimensions of actual LIDAR scan
         time_to_collision = forward_dist / self.velocity
-        stop = time_to_collision < self.STOPPING_TIME
+        stop = time_to_collision < self.STOPPING_TIME or forward_dist < 0.3
         
         
         if stop: # TODO: if this doesn't work maybe we also check distance
@@ -70,7 +70,7 @@ class SafetyController(Node):
             self.get_logger().info(f'STOPPING!!! {time_to_collision=}')
 
             # TODO: uncomment this to send actual stop commands
-            # self.drive_publisher_.publish(drive_stamped)
+            self.drive_publisher_.publish(drive_stamped)
 
 def main():
     rclpy.init()
