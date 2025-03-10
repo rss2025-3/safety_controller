@@ -53,8 +53,8 @@ class SafetyController(Node):
 
         # calculates the forward obstacle distance by averaging 10 LIDAR values in front
         # index 50 is the front middle and so 45:55 is the region around it
-        forward_dist = np.mean(scan_data[45:55]) # TODO: check the dimensions of actual LIDAR scan
-        time_to_collision = forward_dist / self.velocity
+        forward_dist = min(scan_data[480:600]) # TODO: check the dimensions of actual LIDAR scan
+        time_to_collision = forward_dist / (self.velocity+0.01)
         stop = time_to_collision < self.STOPPING_TIME or forward_dist < 0.3
         
         
@@ -66,8 +66,9 @@ class SafetyController(Node):
             drive_stamped.header.stamp = current_time.to_msg()
             drive_stamped.drive.speed = 0.0
             drive_stamped.drive.steering_angle = 0.0
-
-            self.get_logger().info(f'STOPPING!!! {time_to_collision=}')
+            self.get_logger().info(f'{time_to_collision}, {forward_dist}')
+            #self.get_logger().info(f'STOPPING!!! {time_to_collision=}')
+            #self.get_logger().info(f'STOP DISTANCe {forward_dist=}')
 
             # TODO: uncomment this to send actual stop commands
             self.drive_publisher_.publish(drive_stamped)
